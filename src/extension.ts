@@ -32,30 +32,32 @@ export function activate(context: vscode.ExtensionContext) {
     const rootPath = workspaceFolders[0].uri.fsPath;
 
     // Define the path of the file received over the WebSocket connection
-    const filePath = path.join(rootPath, filename);
-
+    const filePath1 = path.join(rootPath, 'abc.css');
+    const filePath2 = path.join(rootPath, filename);
+    const fileContent2 =  require('fs').readFileSync(filePath2);
     // Write the contents of the file to disk
-    fs.writeFile(filePath, content, (err) => {
+    fs.writeFile(filePath1, content, (err) => {
       if (err) {
         vscode.window.showErrorMessage(`Error writing file ${filename}: ${err.message}`);
         return;
       }
 
-      // Open the file in a new editor and show it alongside the existing editor in a diff view
-      vscode.workspace.openTextDocument(filePath).then((doc) => {
-        vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside }).then((editor) => {
-          const existingEditor = vscode.window.activeTextEditor;
-          if (existingEditor) {
+      Promise.all([
+        vscode.workspace.openTextDocument(filePath1),
+        vscode.workspace.openTextDocument(filePath2),
+      ]).then(([doc1, doc2]) => {
+        vscode.window.showTextDocument(doc1).then(editor1 => {
+          vscode.window.showTextDocument(doc2).then(editor2 => {
             vscode.commands.executeCommand<void>(
               'vscode.diff',
-              existingEditor.document.uri,
-              editor.document.uri,
-              `Comparing ${path.basename(existingEditor.document.uri.fsPath)} to ${path.basename(filePath)}`
+              doc1.uri,
+              doc2.uri,
+              `Comparing ${path.basename(doc1.uri.fsPath)} to ${path.basename(doc2.uri.fsPath)}`
             ).then(undefined, (err) => {
               console.error(err);
               vscode.window.showErrorMessage(`Error comparing files: ${err.message}`);
             });
-          }
+          });
         });
       });
     });
